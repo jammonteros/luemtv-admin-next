@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// 🔧 Configura tus credenciales de Supabase
 const SUPABASE_URL = "https://pqnqpuagsfsfarcslhcw.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbnFwdWFnc2ZzZmFyY3NsaGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzODU0OTEsImV4cCI6MjA2Mzk2MTQ5MX0.2-ogc9T26xEFyL_fW5Zt7vj0Q0ZowYNyHmj7AyS5Ieo";
 
@@ -15,32 +16,25 @@ export default function Home() {
   const [canales, setCanales] = useState([]);
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-      }
-    );
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
-    fetch(`${SUPABASE_URL}/rest/v1/canales?select=*`, {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => setCanales(data))
-      .catch((err) => console.error("Error al cargar canales:", err));
-  }, []);
+    if (session) {
+      supabase
+        .from("canales")
+        .select("*")
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error al cargar canales:", error);
+          } else {
+            setCanales(data);
+          }
+        });
+    }
+  }, [session]);
 
   const signIn = async () => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -60,39 +54,14 @@ export default function Home() {
       alert("Faltan datos");
       return;
     }
-    const token = session?.access_token;
-    const userId = session?.user?.id;
-    if (!token || !userId) {
-      alert("No autenticado correctamente");
-      return;
-    }
 
-    console.log("Intentando agregar canal con:");
-    console.log("Nombre:", nombre);
-    console.log("URL:", url);
-    console.log("user_id:", userId);
-    console.log("Token:", token);
+    const { error, data } = await supabase
+      .from("canales")
+      .insert([{ nombre, url }])
+      .select();
 
-    const nuevoCanal = {
-      nombre,
-      url,
-      user_id: userId
-    };
-
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/canales`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(nuevoCanal),
-    });
-
-    const data = await res.json();
-    console.log("Respuesta POST:", data);
-    if (!res.ok) {
+    if (error) {
+      console.error("Error al agregar canal:", error);
       alert("Error al guardar canal");
       return;
     }
