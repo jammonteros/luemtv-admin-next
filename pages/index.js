@@ -51,9 +51,17 @@ export default function Home() {
       return;
     }
     const token = session?.access_token;
-    if (!token) return alert("No autenticado");
+    const userId = session?.user?.id;
+    if (!token || !userId) {
+      alert("No autenticado correctamente");
+      return;
+    }
 
-    const nuevoCanal = { nombre, url };
+    const nuevoCanal = {
+      nombre,
+      url,
+      user_id: userId
+    };
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/canales`, {
       method: "POST",
