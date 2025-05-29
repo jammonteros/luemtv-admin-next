@@ -15,9 +15,19 @@ export default function Home() {
   const [canales, setCanales] = useState([]);
 
   useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+      }
+    );
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -56,6 +66,12 @@ export default function Home() {
       alert("No autenticado correctamente");
       return;
     }
+
+    console.log("Intentando agregar canal con:");
+    console.log("Nombre:", nombre);
+    console.log("URL:", url);
+    console.log("user_id:", userId);
+    console.log("Token:", token);
 
     const nuevoCanal = {
       nombre,
